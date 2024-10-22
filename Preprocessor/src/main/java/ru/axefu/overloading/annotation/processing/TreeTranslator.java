@@ -148,6 +148,16 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
         jcBinary.type = getMethod(type, operator.get(jcBinary.getKind()).toString());
     }
 
+    @Override
+    public void visitAssignop(JCAssignOp jcAssignOp) {
+        super.visitAssignop(jcAssignOp);
+        Type type = jcAssignOp.getVariable().type;
+        if (type == null) return;
+        Kind kind = getKind(jcAssignOp.getTag().toString());
+        Map<Kind, Name> operator = getOverloadedKinds(type);
+        jcAssignOp.type = getMethod(type, operator.get(kind).toString());
+    }
+
     /**
      * получить type из дерева, предварительно проверив её на null
      */
@@ -318,11 +328,15 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
      * @param value тип оператора в виде строки
      * @return тип оператора
      */
-    private Kind getKind(String value) {
+    public Kind getKind(String value) {
         switch (value) {
+            case "PLUS_ASG":
             case "PLUS": return Kind.PLUS;
+            case "MINUS_ASG":
             case "MINUS": return Kind.MINUS;
+            case "MUL_ASG":
             case "MULTIPLY": return Kind.MULTIPLY;
+            case "DIV_ASG":
             case "DIVIDE": return Kind.DIVIDE;
         }
         return null;

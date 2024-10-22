@@ -46,6 +46,27 @@ public class Processor extends AbstractProcessor {
         private final TreeMaker maker = util.maker;
 
         @Override
+        public void visitAssignop(JCTree.JCAssignOp jcAssignOp) {
+            super.visitAssignop(jcAssignOp);
+            Map<Tree.Kind, Name> overloaded = getOverloadedKinds(jcAssignOp.type);
+            if (overloaded != null) {
+                JCTree.Tag tag = getTag(getKind(jcAssignOp.getTag().toString()));
+                if (tag == null) return;
+                result = maker.Assign(
+                        jcAssignOp.getVariable(),
+                        maker.Binary(
+                                tag,
+                                jcAssignOp.getVariable(),
+                                jcAssignOp.getExpression()
+                        )
+                );
+                result.type = jcAssignOp.type;
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Result: " + result);
+                super.visitAssign((JCTree.JCAssign) result);
+            }
+        }
+
+        @Override
         public void visitBinary(JCTree.JCBinary jcBinary) {
             super.visitBinary(jcBinary);
             Map<Tree.Kind, Name> overloaded = getOverloadedKinds(jcBinary.type);
@@ -61,6 +82,16 @@ public class Processor extends AbstractProcessor {
                 ).getExpression();
                 result.type = jcBinary.type;
             }
+        }
+
+        private JCTree.Tag getTag(Tree.Kind kind) {
+            switch (kind) {
+                case PLUS: return JCTree.Tag.PLUS;
+                case MINUS: return JCTree.Tag.MINUS;
+                case MULTIPLY: return JCTree.Tag.MUL;
+                case DIVIDE: return JCTree.Tag.DIV;
+            }
+            return null;
         }
     }
 }

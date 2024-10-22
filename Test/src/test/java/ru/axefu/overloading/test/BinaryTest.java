@@ -15,16 +15,17 @@ import static ru.axefu.overloading.test.StaticImport.*;
  */
 public class BinaryTest {
 
-    private final Vector3 a = new Vector3(5, 5, 5);
+    private Vector3 a = new Vector3(12, 15, 34);
     private final Vector3 b = new Vector3(7, 7, 7);
 
     /**
      * Тест перегрузки бинарных операторов
      */
     @Test
-    public void binaryTest() {
+    public final void binaryTest() {
         Vector3 a = new Vector3(1, 2, 3);
         Vector3 b = new Vector3(4, 5, 6);
+        a = a + b;
         System.out.println(a + b);
         System.out.println(a - b);
         System.out.println(a * 5);
@@ -72,6 +73,15 @@ public class BinaryTest {
         Num b = new Num(10);
         System.out.println(this.a + a + b);
         System.out.println(a + b);
+    }
+
+    @Test
+    public void assignOpTest() {
+        a += a + b;
+        System.out.println(a += a + b);
+        System.out.println(a -= b);
+        System.out.println(a *= b);
+        System.out.println(a /= 5);
     }
 
     private Vector3 f() {

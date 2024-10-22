@@ -26,7 +26,15 @@
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
-        <daemon.highlightInfoFilter implementation="ru.axefu.plugin.overloading.BinaryHighlightErrorFilter"/>
+        <localInspection language="JAVA"
+                         groupKey="group.names.probable.bugs"
+                         groupPath="Java"
+                         groupBundle="messages.InspectionsBundle"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="ru.axefu.plugin.overloading.Problems"
+                         displayName=""/>
+        <daemon.highlightInfoFilter implementation="ru.axefu.plugin.overloading.BinaryHighlightInfoFilter"/>
         <implicitUsageProvider implementation="ru.axefu.plugin.overloading.BinaryImplicitUsageProvider"/>
     </extensions>
 </idea-plugin>

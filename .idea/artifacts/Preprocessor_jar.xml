@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="Preprocessor:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/Preprocessor_jar</output-path>
+    <root id="archive" name="Preprocessor.jar">
+      <element id="module-output" name="Preprocessor" />
+      <element id="extracted-dir" path="/usr/lib/jvm/java-8-openjdk/lib/tools.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>
