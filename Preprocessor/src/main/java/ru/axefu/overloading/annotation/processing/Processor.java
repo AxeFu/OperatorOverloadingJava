@@ -11,7 +11,6 @@ import com.sun.tools.javac.util.Name;
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
-import javax.tools.Diagnostic;
 import java.util.Map;
 import java.util.Set;
 
@@ -42,7 +41,7 @@ public class Processor extends AbstractProcessor {
         return false;
     }
 
-    private class BinaryTranslator extends TreeTranslator {
+    private static class BinaryTranslator extends TreeTranslator {
         private final TreeMaker maker = util.maker;
 
         @Override
@@ -61,7 +60,6 @@ public class Processor extends AbstractProcessor {
                         )
                 );
                 result.type = jcAssignOp.type;
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Result: " + result);
                 super.visitAssign((JCTree.JCAssign) result);
             }
         }
@@ -70,10 +68,6 @@ public class Processor extends AbstractProcessor {
         public void visitBinary(JCTree.JCBinary jcBinary) {
             super.visitBinary(jcBinary);
             Map<Tree.Kind, Name> overloaded = getOverloadedKinds(jcBinary.type);
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Binary: " + jcBinary +
-                    "\nlhs: " + jcBinary.lhs.getClass() +
-                    "\nrhs: " + jcBinary.rhs.getClass() +
-                    "\noverloaded: " + overloaded);
             if (overloaded != null) {
                 result = maker.Exec(maker.Apply(
                         List.nil(),
