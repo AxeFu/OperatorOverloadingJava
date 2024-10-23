@@ -12,7 +12,6 @@ class Scope {
 
     private final Scope parent;
     public final JCTree key;
-    public final int level;
 
     public Scope(JCTree key) {
         this(key, null);
@@ -21,7 +20,6 @@ class Scope {
     private Scope(JCTree key, Scope parent) {
         this.key = key;
         this.parent = parent;
-        this.level = parent == null ? 0 : parent.level + 1;
     }
 
     public Scope createInner(JCTree key) {

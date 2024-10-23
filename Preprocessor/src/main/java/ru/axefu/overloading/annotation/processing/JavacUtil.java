@@ -6,6 +6,8 @@ import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Names;
 
+import javax.annotation.processing.Messager;
+
 /**
  * Служебный класс для процессора
  *
@@ -13,15 +15,14 @@ import com.sun.tools.javac.util.Names;
  * @since 19.10.2024
  */
 class JavacUtil {
-
     static JavacUtil util;
     public final TreeMaker maker;
     public final Symtab symtab;
     public final Types types;
     public final Names names;
 
-    public static JavacUtil getInstance(Context context) {
-        return util = new JavacUtil(context);
+    public static void init(Context context) {
+        util = new JavacUtil(context);
     }
 
     private JavacUtil(Context context) {

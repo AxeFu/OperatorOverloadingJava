@@ -7,9 +7,9 @@ import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.Name;
 import ru.axefu.overloading.annotation.Operator;
 
+import javax.lang.model.element.Modifier;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -113,10 +113,10 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
         super.visitApply(jcMethodInvocation);
         JCTree tree = jcMethodInvocation.getMethodSelect();
         if (tree instanceof JCIdent) {
-            tree.type = getMethod(((JCIdent)tree).getName() + "");
+            tree.type = getMethod(((JCIdent) tree).getName() + "");
         }
         if (tree instanceof JCFieldAccess) {
-            JCFieldAccess fieldAccess = (JCFieldAccess)tree;
+            JCFieldAccess fieldAccess = (JCFieldAccess) tree;
             tree.type = getMethod(fieldAccess.selected.type, fieldAccess.getIdentifier().toString());
         }
         jcMethodInvocation.type = tree.type;
@@ -175,6 +175,7 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
 
     /**
      * Опуститься в блок кода
+     *
      * @param tree блок
      */
     private void down(JCTree tree) {
@@ -217,7 +218,7 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
         Scope currentScope = this.currentScope;
         JCTree result = null;
         do {
-            if (currentScope.level == 0) break;
+            if (currentScope.key instanceof JCCompilationUnit) break;
             result = local.get(currentScope.key).get(fieldType).get(name);
             currentScope = currentScope.getParent();
         } while (result == null);
@@ -255,8 +256,7 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
      */
     private Type getMethod(Type type, String name) {
         if (type == null || name == null) return null;
-        Map<FieldType, Map<String, JCTree>> fields = classes.get(type);
-        if (fields == null) return compiledClass(type, clazz -> {
+        if (classes.get(type) == null) return compiledClass(type, clazz -> {
             for (Method method : clazz.getMethods()) {
                 if (method.getName().equals(name)) {
                     Name fullTypeName = util.names.fromString(method.getReturnType().getCanonicalName());
@@ -265,7 +265,7 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
             }
             return null;
         });
-        JCTree result = fields.get(FieldType.METHOD).get(name);
+        JCTree result = classes.get(type).get(FieldType.METHOD).get(name);
         return getType(result);
     }
 
@@ -284,7 +284,6 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
 
     /**
      * Получает все имена методов аннотированных Operator, не учитывает разное имя метода перегружающего 1 оператор
-     * //TODO сделать в плагине проверку на разные имена и выводить Error
      *
      * @param type тип класса в котором есть эти методы
      * @return дерево имен методов, которые перегружают оператор
@@ -331,15 +330,28 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
     public Kind getKind(String value) {
         switch (value) {
             case "PLUS_ASG":
-            case "PLUS": return Kind.PLUS;
+            case "PLUS":
+                return Kind.PLUS;
             case "MINUS_ASG":
-            case "MINUS": return Kind.MINUS;
+            case "MINUS":
+                return Kind.MINUS;
             case "MUL_ASG":
-            case "MULTIPLY": return Kind.MULTIPLY;
+            case "MULTIPLY":
+                return Kind.MULTIPLY;
             case "DIV_ASG":
-            case "DIVIDE": return Kind.DIVIDE;
+            case "DIVIDE":
+                return Kind.DIVIDE;
         }
         return null;
+    }
+
+    private boolean isClassScope() {
+        return currentScope.key instanceof JCClassDecl;
+    }
+
+    private String getClassName(JCClassDecl jcClassDecl) {
+        String prefix = isClassScope() && !currentScope.key.equals(jcClassDecl) ? ((JCClassDecl)currentScope.key).getSimpleName() + "." : "";
+        return prefix + jcClassDecl.getSimpleName().toString();
     }
 
     /**
@@ -347,8 +359,8 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
      */
     private class ClassScanner extends TreeScanner {
 
-        private final Map<Type, ArrayList<JCImport>> classWithStaticImport = new HashMap<>();
-        private final ArrayList<JCImport> staticImports = new ArrayList<>();
+        private final Map<Type, Map<String, String>> classWithStaticImport = new HashMap<>();
+        private final Map<String, String> staticImports = new HashMap<>();
         private final Map<String, Type> types = new HashMap<>();
 
         @Override
@@ -365,24 +377,28 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
 
         @Override
         public void visitImport(JCImport jcImport) {
+            JCTree.JCFieldAccess jcFieldAccess = (JCTree.JCFieldAccess) jcImport.getQualifiedIdentifier();
+            String packet = jcFieldAccess.getExpression().toString();
+            String simpleName = jcFieldAccess.getIdentifier().toString();
             if (!jcImport.isStatic()) {
-                JCTree.JCFieldAccess jcFieldAccess = (JCTree.JCFieldAccess) jcImport.getQualifiedIdentifier();
-                String packet = jcFieldAccess.getExpression().toString();
-                String simpleName = jcFieldAccess.getIdentifier().toString();
                 Map<String, Type> types = packages.get(packet);
                 Type type = types != null ? types.get(simpleName) : jcFieldAccess.type;
-                this.types.put(jcFieldAccess.getIdentifier().toString(), type);
+                this.types.put(simpleName, type);
             } else {
-                staticImports.add(jcImport);
+                staticImports.put(currentPackage, ((JCFieldAccess) jcFieldAccess.getExpression()).getIdentifier().toString());
             }
         }
 
         @Override
         public void visitClassDef(JCClassDecl jcClassDecl) {
-            currentClass = packages.get(currentPackage).get(jcClassDecl.getSimpleName().toString());
+            Type oldClass = currentClass;
+            currentClass = packages.get(currentPackage).get(getClassName(jcClassDecl));
             imports.put(currentClass, new HashMap<>(types));
             classes.put(currentClass, new HashMap<>());
-            classWithStaticImport.put(currentClass, new ArrayList<>(staticImports));
+            classWithStaticImport.put(currentClass, new HashMap<>(staticImports));
+            if (isClassScope() && !jcClassDecl.getModifiers().getFlags().contains(Modifier.STATIC)) {
+                classWithStaticImport.get(currentClass).put(currentPackage, getClassName((JCClassDecl) currentScope.key));
+            }
             classes.get(currentClass).put(FieldType.METHOD, new HashMap<>());
             classes.get(currentClass).put(FieldType.VARIABLE, new HashMap<>());
             classes.get(currentClass).get(FieldType.VARIABLE).put("this", jcClassDecl);
@@ -390,6 +406,7 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
             down(jcClassDecl);
             super.visitClassDef(jcClassDecl);
             up();
+            currentClass = oldClass;
         }
 
         @Override
@@ -402,7 +419,7 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
         @Override
         public void visitMethodDef(JCMethodDecl jcMethodDecl) {
             jcMethodDecl.type = types.get(jcMethodDecl.getReturnType() + "");
-            if (currentScope.level == 1) {
+            if (isClassScope()) {
                 addMethod(jcMethodDecl.getName().toString(), jcMethodDecl);
             } else {
                 addLocalMethod(jcMethodDecl.getName().toString(), jcMethodDecl);
@@ -415,7 +432,7 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
         @Override
         public void visitVarDef(JCVariableDecl jcVariableDecl) {
             jcVariableDecl.type = types.get(jcVariableDecl.getType() + "");
-            if (currentScope.level == 1) {
+            if (isClassScope()) {
                 addVariable(jcVariableDecl.getName().toString(), jcVariableDecl);
             } else {
                 addLocalVariable(jcVariableDecl.getName().toString(), jcVariableDecl);
@@ -425,18 +442,13 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
 
         public void resolveStaticImports() {
             for (Type type : classWithStaticImport.keySet()) {
-                ArrayList<JCImport> imports = classWithStaticImport.get(type);
-                for (JCImport jcImport : imports) {
-                    JCFieldAccess fieldAccess = ((JCFieldAccess)jcImport.getQualifiedIdentifier());
-                    if (fieldAccess.getIdentifier().toString().equals("*")) {
-                        JCFieldAccess staticClass = ((JCFieldAccess)fieldAccess.getExpression());
-                        Type staticType = packages.get(staticClass.getExpression().toString())
-                                .get(staticClass.getIdentifier().toString());
-                        Map<FieldType, Map<String, JCTree>> fromFields = classes.get(staticType);
-                        Map<FieldType, Map<String, JCTree>> toFields = classes.get(type);
-                        computeMapWithoutOverwrites(toFields.get(FieldType.VARIABLE), fromFields.get(FieldType.VARIABLE));
-                        computeMapWithoutOverwrites(toFields.get(FieldType.METHOD), fromFields.get(FieldType.METHOD));
-                    }
+                Map<String, String> imports = classWithStaticImport.get(type);
+                for (String pack : imports.keySet()) {
+                    Type staticType = packages.get(pack).get(imports.get(pack));
+                    Map<FieldType, Map<String, JCTree>> fromFields = classes.get(staticType);
+                    Map<FieldType, Map<String, JCTree>> toFields = classes.get(type);
+                    computeMapWithoutOverwrites(toFields.get(FieldType.VARIABLE), fromFields.get(FieldType.VARIABLE));
+                    computeMapWithoutOverwrites(toFields.get(FieldType.METHOD), fromFields.get(FieldType.METHOD));
                 }
             }
         }
@@ -491,13 +503,17 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
         public void visitTopLevel(JCCompilationUnit jcCompilationUnit) {
             currentPackage = jcCompilationUnit.getPackageName().toString();
             packages.computeIfAbsent(currentPackage, k -> new HashMap<>());
+            currentScope = new Scope(jcCompilationUnit);
             super.visitTopLevel(jcCompilationUnit);
         }
 
         @Override
         public void visitClassDef(JCClassDecl jcClassDecl) {
             Type type = new Type.ClassType(Type.JCNoType.noType, null, jcClassDecl.sym);
-            packages.get(currentPackage).put(jcClassDecl.getSimpleName().toString(), type);
+            packages.get(currentPackage).put(getClassName(jcClassDecl), type);
+            down(jcClassDecl);
+            super.visitClassDef(jcClassDecl);
+            up();
         }
     }
 

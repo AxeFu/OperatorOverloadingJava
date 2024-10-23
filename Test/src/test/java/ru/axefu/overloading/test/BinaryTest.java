@@ -82,10 +82,25 @@ public class BinaryTest {
         System.out.println(a -= b);
         System.out.println(a *= b);
         System.out.println(a /= 5);
+        create();
     }
 
     private Vector3 f() {
         return new Vector3(1, 2, 3);
+    }
+
+    public void create() {
+        Tes tes = new Tes();
+        tes.hello();
+    }
+
+    public class Tes {
+
+        public void hello() {
+            System.out.println(a + b);
+            System.out.println(a += b);
+        }
+
     }
 
 }

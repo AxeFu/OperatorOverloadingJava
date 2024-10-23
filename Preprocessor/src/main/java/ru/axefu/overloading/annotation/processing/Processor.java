@@ -11,6 +11,7 @@ import com.sun.tools.javac.util.Name;
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
+import javax.tools.Diagnostic;
 import java.util.Map;
 import java.util.Set;
 
@@ -24,11 +25,19 @@ import java.util.Set;
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class Processor extends AbstractProcessor {
 
+
+    private static Messager messager;
+    private static long count = 0;
+    public static void print(Object object) {
+        messager.printMessage(Diagnostic.Kind.NOTE, "[" + count + "] " + object);
+    }
+
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
         this.processingEnv = UnWrapper.get(processingEnv);
-        JavacUtil.getInstance(((JavacProcessingEnvironment) this.processingEnv).getContext());
+        messager = processingEnv.getMessager();
+        JavacUtil.init(((JavacProcessingEnvironment) this.processingEnv).getContext());
     }
 
     @Override
