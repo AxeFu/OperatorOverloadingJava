@@ -32,7 +32,7 @@
                          groupBundle="messages.InspectionsBundle"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="ru.axefu.plugin.overloading.Problems"
+                         implementationClass="ru.axefu.plugin.overloading.BinaryLocalInspectionTool"
                          displayName=""/>
         <daemon.highlightInfoFilter implementation="ru.axefu.plugin.overloading.BinaryHighlightInfoFilter"/>
         <implicitUsageProvider implementation="ru.axefu.plugin.overloading.BinaryImplicitUsageProvider"/>

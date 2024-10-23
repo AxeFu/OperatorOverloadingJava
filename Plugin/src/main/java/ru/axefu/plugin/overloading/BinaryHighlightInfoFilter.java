@@ -2,10 +2,10 @@ package ru.axefu.plugin.overloading;
 
 import com.intellij.codeInsight.daemon.impl.HighlightInfo;
 import com.intellij.codeInsight.daemon.impl.HighlightInfoFilter;
-import com.intellij.codeInsight.daemon.impl.analysis.HighlightUtilHook;
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.*;
+import com.intellij.psi.util.TypeConversionUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,16 +28,17 @@ public class BinaryHighlightInfoFilter implements HighlightInfoFilter {
         }
         if (element == null) return true;
         if (element instanceof PsiPolyadicExpression expression) {
-            return HighlightUtilHook.isPolyadicOperatorApplicable(expression) == null;
+            return HighlightUtil.isPolyadicOperatorApplicable(expression) == null;
         }
         if (element instanceof PsiDeclarationStatement expression) {
             if (expression.getDeclaredElements().length == 1) {
                 element = expression.getDeclaredElements()[0];
                 if (element instanceof PsiVariable variable) {
                     PsiType require = variable.getType();
-                    PsiType current = HighlightUtilHook.getType(variable.getInitializer());
+                    PsiType current = HighlightUtil.getType(variable.getInitializer());
                     if (current != null) {
-                        if (HighlightUtilHook.isAssignability(require, current, null)) {
+                        if (TypeConversionUtil.isAssignable(require, current)) {
+                            System.out.println("Declaration:" + highlightInfo.type);
                             return false;
                         }
                     }
@@ -45,22 +46,18 @@ public class BinaryHighlightInfoFilter implements HighlightInfoFilter {
             }
         }
         if (element instanceof PsiAssignmentExpression expression) {
-            boolean result = !HighlightUtilHook.isAssignmentCompatibleTypes(expression);
-            if (!result && !HighlightUtilHook.isAssignmentOperatorApplicable(expression)) result = true;
-            if (!result) {
-                HighlightUtilHook.checkReferenceExpression((PsiReferenceExpression) expression.getLExpression(), file);
-                return false;
-            }
-            return true;
+            boolean result = !HighlightUtil.isAssignmentCompatibleTypes(expression);
+            if (!result && !HighlightUtil.isAssignmentOperatorApplicable(expression)) result = true;
+            return result;
         }
         if (element instanceof PsiReturnStatement expression) {
             PsiMethod method = findMethodInParent(expression);
             if (method != null) {
                 PsiType returnType = method.getReturnType();
                 if (expression.getReturnValue() != null) {
-                    PsiType valueType = HighlightUtilHook.getType(expression.getReturnValue());
-                    if (valueType != null) {
-                        if (HighlightUtilHook.isAssignability(returnType, valueType, null)) {
+                    PsiType valueType = HighlightUtil.getType(expression.getReturnValue());
+                    if (valueType != null && returnType != null) {
+                        if (TypeConversionUtil.isAssignable(returnType, valueType)) {
                             return false;
                         }
                     }
