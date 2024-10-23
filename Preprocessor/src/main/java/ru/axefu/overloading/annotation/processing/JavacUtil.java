@@ -6,8 +6,6 @@ import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Names;
 
-import javax.annotation.processing.Messager;
-
 /**
  * Служебный класс для процессора
  *

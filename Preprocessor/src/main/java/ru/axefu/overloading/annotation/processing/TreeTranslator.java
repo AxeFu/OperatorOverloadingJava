@@ -1,5 +1,6 @@
 package ru.axefu.overloading.annotation.processing;
 
+import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeScanner;
@@ -10,6 +11,7 @@ import ru.axefu.overloading.annotation.Operator;
 import javax.lang.model.element.Modifier;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -30,15 +32,15 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
 
     private Type currentClass;
     private final Map<Type, Map<String, Type>> imports = new HashMap<>();
-    private final Map<Type, Map<FieldType, Map<String, JCTree>>> classes = new HashMap<>();
+    private final Map<Type, Map<FieldType, Map<String, Type>>> classes = new HashMap<>();
     private final Map<Type, Map<Kind, Name>> overloadedOperator = new HashMap<>();
 
     private Scope currentScope;
     //JCTree - currentScope.key
-    private final Map<JCTree, Map<FieldType, Map<String, JCTree>>> local = new HashMap<>();
+    private final Map<JCTree, Map<FieldType, Map<String, Type>>> local = new HashMap<>();
 
     /**
-     * Трансливаровать деревья предварительно разрешив типы всех переменных и методов
+     * Транслировать деревья предварительно разрешив типы всех переменных и методов
      */
     public void translate(JCTree[] trees) {
         List<JCTree> list = List.from(trees);
@@ -159,11 +161,24 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
     }
 
     /**
-     * получить type из дерева, предварительно проверив её на null
+     * Получить type из дерева, предварительно проверив её на null
      */
     private Type getType(JCTree tree) {
         if (tree == null) return null;
         return tree.type;
+    }
+
+    private Type getType(Class<?> clazz) {
+        return getType(clazz.getTypeName());
+    }
+
+    /**
+     * Получить type из строки
+     */
+    private Type getType(String fullClassName) {
+        Name name = util.names.fromString(fullClassName);
+        Symbol.ClassSymbol symbol = util.symtab.classes.get(name);
+        return new Type.ClassType(Type.JCNoType.noType, List.nil(), symbol);
     }
 
     /**
@@ -216,13 +231,13 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
      */
     private Type getLocal(FieldType fieldType, String name) {
         Scope currentScope = this.currentScope;
-        JCTree result = null;
+        Type result = null;
         do {
             if (currentScope.key instanceof JCCompilationUnit) break;
             result = local.get(currentScope.key).get(fieldType).get(name);
             currentScope = currentScope.getParent();
         } while (result == null);
-        return getType(result);
+        return result;
     }
 
     /**
@@ -237,14 +252,12 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
         if (classes.get(type) == null) return compiledClass(type, clazz -> {
             try {
                 Field field = clazz.getField(name);
-                Name fieldTypeName = util.names.fromString(field.getType().toString());
-                return new Type.ClassType(Type.JCNoType.noType, null, util.symtab.classes.get(fieldTypeName));
+                return getType(field.getType());
             } catch (NoSuchFieldException e) {
                 return null;
             }
         });
-        JCTree result = classes.get(type).get(FieldType.VARIABLE).get(name);
-        return getType(result);
+        return classes.get(type).get(FieldType.VARIABLE).get(name);
     }
 
     /**
@@ -259,14 +272,12 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
         if (classes.get(type) == null) return compiledClass(type, clazz -> {
             for (Method method : clazz.getMethods()) {
                 if (method.getName().equals(name)) {
-                    Name fullTypeName = util.names.fromString(method.getReturnType().getCanonicalName());
-                    return new Type.ClassType(Type.JCNoType.noType, null, util.symtab.classes.get(fullTypeName));
+                    return getType(method.getReturnType());
                 }
             }
             return null;
         });
-        JCTree result = classes.get(type).get(FieldType.METHOD).get(name);
-        return getType(result);
+        return classes.get(type).get(FieldType.METHOD).get(name);
     }
 
     /**
@@ -350,7 +361,7 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
     }
 
     private String getClassName(JCClassDecl jcClassDecl) {
-        String prefix = isClassScope() && !currentScope.key.equals(jcClassDecl) ? ((JCClassDecl)currentScope.key).getSimpleName() + "." : "";
+        String prefix = isClassScope() && !currentScope.key.equals(jcClassDecl) ? ((JCClassDecl)currentScope.key).getSimpleName() + "$" : "";
         return prefix + jcClassDecl.getSimpleName().toString();
     }
 
@@ -383,7 +394,7 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
             if (!jcImport.isStatic()) {
                 Map<String, Type> types = packages.get(packet);
                 Type type = types != null ? types.get(simpleName) : jcFieldAccess.type;
-                this.types.put(simpleName, type);
+                this.types.put(simpleName, getType(type.toString()));
             } else {
                 staticImports.put(currentPackage, ((JCFieldAccess) jcFieldAccess.getExpression()).getIdentifier().toString());
             }
@@ -401,7 +412,7 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
             }
             classes.get(currentClass).put(FieldType.METHOD, new HashMap<>());
             classes.get(currentClass).put(FieldType.VARIABLE, new HashMap<>());
-            classes.get(currentClass).get(FieldType.VARIABLE).put("this", jcClassDecl);
+            classes.get(currentClass).get(FieldType.VARIABLE).put("this", currentClass);
             jcClassDecl.type = currentClass;
             down(jcClassDecl);
             super.visitClassDef(jcClassDecl);
@@ -445,28 +456,48 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
                 Map<String, String> imports = classWithStaticImport.get(type);
                 for (String pack : imports.keySet()) {
                     Type staticType = packages.get(pack).get(imports.get(pack));
-                    Map<FieldType, Map<String, JCTree>> fromFields = classes.get(staticType);
-                    Map<FieldType, Map<String, JCTree>> toFields = classes.get(type);
+                    Map<FieldType, Map<String, Type>> fromFields =
+                            staticType != null
+                            ? classes.get(staticType)
+                            : getData(getType(pack + "." + imports.get(pack)));
+                    Map<FieldType, Map<String, Type>> toFields = classes.get(type);
                     computeMapWithoutOverwrites(toFields.get(FieldType.VARIABLE), fromFields.get(FieldType.VARIABLE));
                     computeMapWithoutOverwrites(toFields.get(FieldType.METHOD), fromFields.get(FieldType.METHOD));
                 }
             }
         }
 
+        private Map<FieldType, Map<String, Type>> getData(Type type) {
+            Map<FieldType, Map<String, Type>> result = new HashMap<>();
+            Map<String, Type> variables, methods;
+            result.put(FieldType.VARIABLE, variables = new HashMap<>());
+            result.put(FieldType.METHOD, methods = new HashMap<>());
+            compiledClass(type, clazz -> {
+                Arrays.stream(clazz.getDeclaredMethods()).forEach(
+                        method -> methods.put(method.getName(), getType(method.getReturnType()))
+                );
+                Arrays.stream(clazz.getDeclaredFields()).forEach(
+                        variable -> variables.put(variable.getName(), getType(variable.getType()))
+                );
+                return null;
+            });
+            return result;
+        }
+
         private void addLocalVariable(String name, JCVariableDecl tree) {
-            local.get(currentScope.key).get(FieldType.VARIABLE).put(name, tree);
+            local.get(currentScope.key).get(FieldType.VARIABLE).put(name, getType(tree));
         }
 
         private void addLocalMethod(String name, JCMethodDecl tree) {
-            local.get(currentScope.key).get(FieldType.METHOD).put(name, tree);
+            local.get(currentScope.key).get(FieldType.METHOD).put(name, getType(tree));
         }
 
         private void addVariable(String name, JCVariableDecl tree) {
-            classes.get(currentClass).get(FieldType.VARIABLE).put(name, tree);
+            classes.get(currentClass).get(FieldType.VARIABLE).put(name, getType(tree));
         }
 
         private void addMethod(String name, JCMethodDecl tree) {
-            classes.get(currentClass).get(FieldType.METHOD).put(name, tree);
+            classes.get(currentClass).get(FieldType.METHOD).put(name, getType(tree));
             overloadedOperator.computeIfAbsent(currentClass, k -> new HashMap<>());
             Kind kind = null;
             for (JCAnnotation annotation : tree.getModifiers().getAnnotations()) {
@@ -509,7 +540,7 @@ class TreeTranslator extends com.sun.tools.javac.tree.TreeTranslator {
 
         @Override
         public void visitClassDef(JCClassDecl jcClassDecl) {
-            Type type = new Type.ClassType(Type.JCNoType.noType, null, jcClassDecl.sym);
+            Type type = getType(jcClassDecl.sym.toString());
             packages.get(currentPackage).put(getClassName(jcClassDecl), type);
             down(jcClassDecl);
             super.visitClassDef(jcClassDecl);

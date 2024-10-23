@@ -30,6 +30,7 @@ public class Processor extends AbstractProcessor {
     private static long count = 0;
     public static void print(Object object) {
         messager.printMessage(Diagnostic.Kind.NOTE, "[" + count + "] " + object);
+        count++;
     }
 
     @Override
@@ -76,6 +77,7 @@ public class Processor extends AbstractProcessor {
         @Override
         public void visitBinary(JCTree.JCBinary jcBinary) {
             super.visitBinary(jcBinary);
+            Processor.print(jcBinary);
             Map<Tree.Kind, Name> overloaded = getOverloadedKinds(jcBinary.type);
             if (overloaded != null) {
                 result = maker.Exec(maker.Apply(

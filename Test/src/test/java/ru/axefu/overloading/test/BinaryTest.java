@@ -99,6 +99,7 @@ public class BinaryTest {
         public void hello() {
             System.out.println(a + b);
             System.out.println(a += b);
+            System.out.println(a = a + b);
         }
 
     }
