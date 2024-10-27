@@ -8,12 +8,7 @@ group = "ru.axefu.plugin.overloading"
 version = "1.0-SNAPSHOT"
 
 repositories {
-  mavenLocal()
   mavenCentral()
-}
-
-dependencies {
-  implementation("ru.axefu:reflection:1.0")
 }
 
 // Configure Gradle IntelliJ Plugin

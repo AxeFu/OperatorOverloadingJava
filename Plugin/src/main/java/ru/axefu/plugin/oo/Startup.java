@@ -54,8 +54,8 @@ public class Startup implements ProjectActivity, Disposable {
                     break;
                 }
             }
-        } catch (Exception ignored) {
-            Reflection.sneakyThrow(ignored);
+        } catch (Exception e) {
+            Reflection.sneakyThrow(e);
         }
         return null;
     }
