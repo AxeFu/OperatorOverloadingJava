@@ -40,7 +40,7 @@ public class BinaryHighlightVisitor extends HighlightVisitorImpl {
                 if (!TypeConversionUtil.isBinaryOperatorApplicable(operationSign, lType, rType, false)) {
                     PsiJavaToken token = expression.getTokenBeforeOperand(operand);
                     if (token != null) {
-                        lType = Resolver.getType(lType, rType, token.getTokenType());
+                        lType = Resolver.getType(lType, rType, token.getTokenType(), expression);
                     }
                 } else {
                     lType = TypeConversionUtil.calcTypeForBinaryExpression(lType, rType, operationSign, true);
@@ -61,7 +61,7 @@ public class BinaryHighlightVisitor extends HighlightVisitorImpl {
         PsiType lType = assignment.getLExpression().getType();
         PsiType rType = assignment.getRExpression().getType();
         if (lType == null || rType == null) return;
-        PsiType result = Resolver.getType(lType, rType, operationSign);
+        PsiType result = Resolver.getType(lType, rType, operationSign, assignment);
         if (result == null) return;
         if (isHighlighted(assignment) && TypeConversionUtil.isAssignable(lType, result))
             removeLastHighlight();
