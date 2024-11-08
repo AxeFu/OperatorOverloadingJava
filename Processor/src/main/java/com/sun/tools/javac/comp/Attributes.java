@@ -40,6 +40,7 @@ public class Attributes extends Attr {
         if (pt().isErroneous() || (pt().hasTag(NONE) && pt() != Type.recoveryType)) {
             if (pt().hasTag(NONE) && referenceIsRhs) {
                 //is lambda and is inside binary/assignOp
+                referenceIsRhs = false;
                 return;
             }
         }
