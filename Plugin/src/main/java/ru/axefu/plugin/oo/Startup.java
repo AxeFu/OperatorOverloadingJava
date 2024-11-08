@@ -5,7 +5,6 @@ import com.intellij.codeInsight.daemon.impl.analysis.HighlightVisitorImpl;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.extensions.impl.ExtensionComponentAdapter;
 import com.intellij.openapi.extensions.impl.ExtensionPointImpl;
-import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.intellij.psi.JavaPsiFacade;

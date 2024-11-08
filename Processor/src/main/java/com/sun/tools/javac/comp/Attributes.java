@@ -10,7 +10,6 @@ import static com.sun.tools.javac.code.TypeTag.NONE;
 
 @SuppressWarnings("unused")
 public class Attributes extends Attr {
-
     protected Attributes(Context context) {
         super(context);
     }
@@ -26,10 +25,8 @@ public class Attributes extends Attr {
     Type check(JCTree tree, Type found, int ownkind, ResultInfo resultInfo) {
         Type old = tree.type;
         Type res = old;
-        if (tree instanceof JCTree.JCBinary)
-            res = checkOverloadBinary((JCTree.JCBinary) tree);
-        if (tree instanceof JCTree.JCAssignOp)
-            res = checkAssignOpBinary((JCTree.JCAssignOp) tree);
+        if (tree instanceof JCTree.JCBinary) res = checkOverloadBinary((JCTree.JCBinary) tree);
+        if (tree instanceof JCTree.JCAssignOp) res = checkAssignOpBinary((JCTree.JCAssignOp) tree);
         if (res != old) return res;
         return super.check(tree, found, ownkind, resultInfo);
     }
@@ -74,11 +71,9 @@ public class Attributes extends Attr {
     private Type checkOverloadBinary(JCTree.JCBinary tree) {
         Symbol.OperatorSymbol operator = (Symbol.OperatorSymbol) tree.operator;
         if (operator.opcode == ByteCodes.error + 1) {
-            JCTree.JCMethodInvocation jcMethodInvocation = (JCTree.JCMethodInvocation) translateOverloadedBinary(
-                    tree.lhs, operator, tree.rhs
-            );
-            visitApply(jcMethodInvocation);
-            tree.type = jcMethodInvocation.type;
+            JCTree method = translateOverloadedBinary(tree.lhs, operator, tree.rhs);
+            visitApply((JCTree.JCMethodInvocation) method);
+            tree.type = method.type;
         }
         return tree.type;
     }
@@ -92,7 +87,6 @@ public class Attributes extends Attr {
         JCTree.JCFieldAccess meth = make.Select(lhs, ms.name);
         meth.type = ms.type;
         meth.sym = ms;
-        return make.Apply(null, meth, List.of(rhs))
-                .setType(((Type.MethodType) ms.type).restype);
+        return make.Apply(null, meth, List.of(rhs)).setType(((Type.MethodType) ms.type).restype);
     }
 }
