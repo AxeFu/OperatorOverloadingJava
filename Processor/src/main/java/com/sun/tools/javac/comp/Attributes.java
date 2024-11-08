@@ -2,6 +2,7 @@ package com.sun.tools.javac.comp;
 
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Type;
+import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.jvm.ByteCodes;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.util.*;
@@ -39,7 +40,7 @@ public class Attributes extends Attr {
     public void visitReference(JCTree.JCMemberReference that) {
         if (pt().isErroneous() || (pt().hasTag(NONE) && pt() != Type.recoveryType)) {
             if (pt().hasTag(NONE) && referenceIsRhs) {
-                //lambda inside binary/assignOp
+                //reference no type inside binary/assignOp
                 referenceIsRhs = false;
                 return;
             }
@@ -48,15 +49,25 @@ public class Attributes extends Attr {
     }
 
     @Override
+    public void visitLambda(JCLambda jcLambda) {
+        if (pt().hasTag(TypeTag.NONE) && referenceIsRhs) {
+            //lambda inside binary/assignOp
+            referenceIsRhs = false;
+            return;
+        }
+        super.visitLambda(jcLambda);
+    }
+
+    @Override
     public void visitBinary(JCTree.JCBinary tree) {
-        referenceIsRhs = tree.rhs instanceof JCMemberReference;
+        referenceIsRhs = tree.rhs instanceof JCMemberReference || tree.rhs instanceof JCLambda;
         super.visitBinary(tree);
         referenceIsRhs = false;
     }
 
     @Override
     public void visitAssignop(JCTree.JCAssignOp tree) {
-        referenceIsRhs = tree.rhs instanceof JCMemberReference;
+        referenceIsRhs = tree.rhs instanceof JCMemberReference || tree.rhs instanceof JCLambda;
         super.visitAssignop(tree);
         referenceIsRhs = false;
     }
