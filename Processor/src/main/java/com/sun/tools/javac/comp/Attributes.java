@@ -12,6 +12,7 @@ import static com.sun.tools.javac.tree.JCTree.*;
 
 public class Attributes extends Attr {
     private final TranslateTypes translator;
+    private boolean referenceIsRhs;
 
     protected Attributes(Context context) {
         super(context);
@@ -35,7 +36,6 @@ public class Attributes extends Attr {
         return super.check(tree, found, ownkind, resultInfo);
     }
 
-    private boolean referenceIsRhs;
     @Override
     public void visitReference(JCTree.JCMemberReference that) {
         if (pt().isErroneous() || (pt().hasTag(NONE) && pt() != Type.recoveryType)) {
