@@ -7,10 +7,14 @@ import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.util.*;
 
 import static com.sun.tools.javac.code.TypeTag.NONE;
+import static com.sun.tools.javac.tree.JCTree.*;
 
 public class Attributes extends Attr {
+    private final TranslateTypes translator;
+
     protected Attributes(Context context) {
         super(context);
+        translator = TranslateTypes.instance(context);
     }
 
     public static Attributes instance(Context context) {
@@ -35,7 +39,7 @@ public class Attributes extends Attr {
     public void visitReference(JCTree.JCMemberReference that) {
         if (pt().isErroneous() || (pt().hasTag(NONE) && pt() != Type.recoveryType)) {
             if (pt().hasTag(NONE) && referenceIsRhs) {
-                //is lambda and is inside binary/assignOp
+                //lambda inside binary/assignOp
                 referenceIsRhs = false;
                 return;
             }
@@ -45,47 +49,35 @@ public class Attributes extends Attr {
 
     @Override
     public void visitBinary(JCTree.JCBinary tree) {
-        referenceIsRhs = tree.rhs instanceof JCTree.JCMemberReference;
+        referenceIsRhs = tree.rhs instanceof JCMemberReference;
         super.visitBinary(tree);
         referenceIsRhs = false;
     }
 
     @Override
     public void visitAssignop(JCTree.JCAssignOp tree) {
-        referenceIsRhs = tree.rhs instanceof JCTree.JCMemberReference;
+        referenceIsRhs = tree.rhs instanceof JCMemberReference;
         super.visitAssignop(tree);
         referenceIsRhs = false;
     }
 
-    private Type checkAssignOpBinary(JCTree.JCAssignOp tree) {
+    private Type checkAssignOpBinary(JCAssignOp tree) {
         Symbol.OperatorSymbol operator = (Symbol.OperatorSymbol) tree.operator;
         if (operator.opcode == ByteCodes.error + 1) {
-            JCTree.JCAssign jcAssign = make.Assign(tree.lhs, translateOverloadedBinary(tree.lhs, operator, tree.rhs));
+            JCAssign jcAssign = make.Assign(tree.lhs, translator.translateOverloaded(tree.lhs, operator, tree.rhs));
             visitAssign(jcAssign);
             tree.type = jcAssign.type;
         }
         return tree.type;
     }
 
-    private Type checkOverloadBinary(JCTree.JCBinary tree) {
+    private Type checkOverloadBinary(JCBinary tree) {
         Symbol.OperatorSymbol operator = (Symbol.OperatorSymbol) tree.operator;
         if (operator.opcode == ByteCodes.error + 1) {
-            JCTree method = translateOverloadedBinary(tree.lhs, operator, tree.rhs);
-            visitApply((JCTree.JCMethodInvocation) method);
+            JCTree method = translator.translateOverloaded(tree.lhs, operator, tree.rhs);
+            visitApply((JCMethodInvocation) method);
             tree.type = method.type;
         }
         return tree.type;
-    }
-
-    JCTree.JCExpression translateOverloadedBinary(
-            JCTree.JCExpression lhs,
-            Symbol.OperatorSymbol operator,
-            JCTree.JCExpression rhs
-    ) {
-        Symbol.MethodSymbol ms = (Symbol.MethodSymbol) operator.owner;
-        JCTree.JCFieldAccess meth = make.Select(lhs, ms.name);
-        meth.type = ms.type;
-        meth.sym = ms;
-        return make.Apply(null, meth, List.of(rhs)).setType(((Type.MethodType) ms.type).restype);
     }
 }

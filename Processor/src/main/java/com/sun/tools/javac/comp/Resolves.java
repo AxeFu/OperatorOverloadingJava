@@ -17,7 +17,6 @@ public class Resolves extends Resolve {
         super(context);
     }
 
-    @SuppressWarnings("unused")
     public static Resolves instance(Context context) {
         Resolve instance = context.get(resolveKey);
         if (instance instanceof Resolves) return (Resolves) instance;

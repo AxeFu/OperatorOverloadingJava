@@ -1,22 +1,23 @@
 package com.sun.tools.javac.comp;
 
 import com.sun.tools.javac.code.Symbol;
+import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.jvm.ByteCodes;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
+import com.sun.tools.javac.util.List;
+
+import static com.sun.tools.javac.tree.JCTree.*;
 
 public class TranslateTypes extends TransTypes {
     private final TreeMaker make;
-    private final Attributes attr;
 
     protected TranslateTypes(Context context) {
         super(context);
-        attr = Attributes.instance(context);
         make = TreeMaker.instance(context);
     }
 
-    @SuppressWarnings("unused")
     public static TranslateTypes instance(Context context) {
         TransTypes instance = context.get(transTypesKey);
         if (instance instanceof TranslateTypes) return (TranslateTypes) instance;
@@ -25,11 +26,11 @@ public class TranslateTypes extends TransTypes {
     }
 
     @Override
-    public void visitBinary(JCTree.JCBinary tree) {
+    public void visitBinary(JCBinary tree) {
         if (tree.operator instanceof Symbol.OperatorSymbol) {
             Symbol.OperatorSymbol operator = (Symbol.OperatorSymbol) tree.operator;
             if (operator.opcode == ByteCodes.error + 1) {
-                result = attr.translateOverloadedBinary(tree.lhs, operator, tree.rhs);
+                result = translateOverloaded(tree.lhs, operator, tree.rhs);
                 result = translate(result);
                 return;
             }
@@ -38,15 +39,23 @@ public class TranslateTypes extends TransTypes {
     }
 
     @Override
-    public void visitAssignop(JCTree.JCAssignOp tree) {
+    public void visitAssignop(JCAssignOp tree) {
         if (tree.operator instanceof Symbol.OperatorSymbol) {
             Symbol.OperatorSymbol operator = (Symbol.OperatorSymbol) tree.operator;
             if (operator.opcode == ByteCodes.error + 1) {
-                result = make.Assign(tree.lhs, attr.translateOverloadedBinary(tree.lhs, operator, tree.rhs));
+                result = make.Assign(tree.lhs, translateOverloaded(tree.lhs, operator, tree.rhs));
                 result = translate(result);
                 return;
             }
         }
         super.visitAssignop(tree);
+    }
+
+    public JCExpression translateOverloaded(JCExpression lhs, Symbol.OperatorSymbol operator, JCExpression rhs) {
+        Symbol.MethodSymbol ms = (Symbol.MethodSymbol) operator.owner;
+        JCTree.JCFieldAccess meth = make.Select(lhs, ms.name);
+        meth.type = ms.type;
+        meth.sym = ms;
+        return make.Apply(null, meth, List.of(rhs)).setType(((Type.MethodType) ms.type).restype);
     }
 }
