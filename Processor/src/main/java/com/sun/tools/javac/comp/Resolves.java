@@ -12,12 +12,12 @@ import ru.axefu.oo.Methods;
 
 import static com.sun.tools.javac.code.Kinds.ABSENT_MTH;
 
-@SuppressWarnings("unused")
 public class Resolves extends Resolve {
     protected Resolves(Context context) {
         super(context);
     }
 
+    @SuppressWarnings("unused")
     public static Resolves instance(Context context) {
         Resolve instance = context.get(resolveKey);
         if (instance instanceof Resolves) return (Resolves) instance;
@@ -33,7 +33,6 @@ public class Resolves extends Resolve {
         return findMethod(env, args.head, names.fromString(methodName), args.tail, typeArgTypes, true, false, false);
     }
 
-    int count;
     @Override
     Symbol findMethod(Env<AttrContext> env, Type site, Name name, List<Type> argTypes, List<Type> typeArgTypes,
                       boolean allowBoxing, boolean useVarargs, boolean operator) {

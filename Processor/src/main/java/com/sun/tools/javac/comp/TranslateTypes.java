@@ -6,7 +6,6 @@ import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
 
-@SuppressWarnings("unused")
 public class TranslateTypes extends TransTypes {
     private final TreeMaker make;
     private final Attributes attr;
@@ -17,6 +16,7 @@ public class TranslateTypes extends TransTypes {
         make = TreeMaker.instance(context);
     }
 
+    @SuppressWarnings("unused")
     public static TranslateTypes instance(Context context) {
         TransTypes instance = context.get(transTypesKey);
         if (instance instanceof TranslateTypes) return (TranslateTypes) instance;

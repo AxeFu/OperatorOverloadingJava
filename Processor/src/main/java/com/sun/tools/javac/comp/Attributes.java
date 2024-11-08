@@ -8,7 +8,6 @@ import com.sun.tools.javac.util.*;
 
 import static com.sun.tools.javac.code.TypeTag.NONE;
 
-@SuppressWarnings("unused")
 public class Attributes extends Attr {
     protected Attributes(Context context) {
         super(context);
