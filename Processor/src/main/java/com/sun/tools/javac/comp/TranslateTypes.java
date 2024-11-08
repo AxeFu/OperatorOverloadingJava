@@ -1,21 +1,19 @@
 package com.sun.tools.javac.comp;
 
 import com.sun.tools.javac.code.Symbol;
-import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.jvm.ByteCodes;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
-import com.sun.tools.javac.util.List;
-
-import static com.sun.tools.javac.tree.JCTree.*;
 
 @SuppressWarnings("unused")
 public class TranslateTypes extends TransTypes {
     private final TreeMaker make;
+    private final Attributes attr;
 
     protected TranslateTypes(Context context) {
         super(context);
+        attr = Attributes.instance(context);
         make = TreeMaker.instance(context);
     }
 
@@ -31,7 +29,7 @@ public class TranslateTypes extends TransTypes {
         if (tree.operator instanceof Symbol.OperatorSymbol) {
             Symbol.OperatorSymbol operator = (Symbol.OperatorSymbol) tree.operator;
             if (operator.opcode == ByteCodes.error + 1) {
-                result = translateBinary(tree.lhs, operator, tree.rhs);
+                result = attr.translateOverloadedBinary(tree.lhs, operator, tree.rhs);
                 result = translate(result);
                 return;
             }
@@ -44,20 +42,11 @@ public class TranslateTypes extends TransTypes {
         if (tree.operator instanceof Symbol.OperatorSymbol) {
             Symbol.OperatorSymbol operator = (Symbol.OperatorSymbol) tree.operator;
             if (operator.opcode == ByteCodes.error + 1) {
-                result = make.Assign(tree.lhs, translateBinary(tree.lhs, operator, tree.rhs));
+                result = make.Assign(tree.lhs, attr.translateOverloadedBinary(tree.lhs, operator, tree.rhs));
                 result = translate(result);
                 return;
             }
         }
         super.visitAssignop(tree);
-    }
-
-    private JCTree.JCExpression translateBinary(JCExpression lhs, Symbol.OperatorSymbol operator, JCExpression rhs) {
-        Symbol.MethodSymbol ms = (Symbol.MethodSymbol) operator.owner;
-        JCTree.JCFieldAccess meth = make.Select(lhs, ms.name);
-        meth.type = ms.type;
-        meth.sym = ms;
-        return make.Apply(null, meth, List.of(rhs))
-                .setType(((Type.MethodType) ms.type).restype);
     }
 }

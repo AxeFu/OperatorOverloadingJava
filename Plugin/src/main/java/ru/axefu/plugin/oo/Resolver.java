@@ -4,7 +4,6 @@ import com.intellij.lang.java.JavaLanguage;
 import com.intellij.psi.*;
 import com.intellij.psi.impl.light.LightMethodBuilder;
 import com.intellij.psi.tree.IElementType;
-import com.intellij.psi.util.TypeConversionUtil;
 
 public class Resolver {
 
