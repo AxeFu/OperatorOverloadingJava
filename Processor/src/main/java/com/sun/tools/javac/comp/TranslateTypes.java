@@ -51,7 +51,7 @@ public class TranslateTypes extends TransTypes {
         super.visitAssignop(tree);
     }
 
-    public JCExpression translateOverloaded(JCExpression lhs, Symbol.OperatorSymbol operator, JCExpression rhs) {
+    public JCMethodInvocation translateOverloaded(JCExpression lhs, Symbol.OperatorSymbol operator, JCExpression rhs) {
         Symbol.MethodSymbol ms = (Symbol.MethodSymbol) operator.owner;
         JCTree.JCFieldAccess meth = make.Select(lhs, ms.name);
         meth.type = ms.type;

@@ -85,8 +85,8 @@ public class Attributes extends Attr {
     private Type checkOverloadBinary(JCBinary tree) {
         Symbol.OperatorSymbol operator = (Symbol.OperatorSymbol) tree.operator;
         if (operator.opcode == ByteCodes.error + 1) {
-            JCTree method = translator.translateOverloaded(tree.lhs, operator, tree.rhs);
-            visitApply((JCMethodInvocation) method);
+            JCMethodInvocation method = translator.translateOverloaded(tree.lhs, operator, tree.rhs);
+            visitApply(method);
             tree.type = method.type;
         }
         return tree.type;
