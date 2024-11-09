@@ -67,6 +67,22 @@ public class BinaryHighlightVisitor extends HighlightVisitorImpl {
             removeLastHighlight();
     }
 
+    @Override
+    public void visitMethodReferenceExpression(@NotNull PsiMethodReferenceExpression expression) {
+        super.visitMethodReferenceExpression(expression);
+        if (isHighlighted(expression) && expression.getParent() instanceof PsiPolyadicExpression) {
+            removeLastHighlight();
+        }
+    }
+
+    @Override
+    public void visitLambdaExpression(@NotNull PsiLambdaExpression expression) {
+        super.visitLambdaExpression(expression);
+        if (isHighlighted(expression) && expression.getParent() instanceof PsiBinaryExpression) {
+            removeLastHighlight();
+        }
+    }
+
     private boolean isHighlighted(PsiElement expression) {
         if (holder.hasErrorResults()) {
             HighlightInfo hi = holder.get(holder.size() - 1);
@@ -99,6 +115,7 @@ public class BinaryHighlightVisitor extends HighlightVisitorImpl {
     }
 
     @Override
+    @SuppressWarnings({"NullableProblems", "MethodDoesntCallSuperMethod"})
     public BinaryHighlightVisitor clone() {
         return new BinaryHighlightVisitor();
     }

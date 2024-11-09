@@ -4,6 +4,7 @@ import com.intellij.lang.java.JavaLanguage;
 import com.intellij.psi.*;
 import com.intellij.psi.impl.light.LightMethodBuilder;
 import com.intellij.psi.tree.IElementType;
+import com.intellij.psi.util.TypeConversionUtil;
 
 public class Resolver {
 
@@ -23,7 +24,7 @@ public class Resolver {
     }
 
     public static PsiType resolveMethod(PsiType type, String methodName, PsiType argType, PsiExpression expression) {
-        if (!(type instanceof PsiClassType clazz) || methodName==null) return null;
+        if (!(type instanceof PsiClassType clazz) || methodName == null) return null;
         if (argType == null) return null;
         PsiSubstitutor subst = clazz.resolveGenerics().getSubstitutor();
         PsiClass psiClass = clazz.resolve();
@@ -31,11 +32,25 @@ public class Resolver {
             return null;
         LightMethodBuilder methodSignature = new LightMethodBuilder(psiClass.getManager(), JavaLanguage.INSTANCE, methodName);
         methodSignature.addParameter("_", argType);
-        PsiMethod method = psiClass.findMethodBySignature(methodSignature, true);
+        PsiMethod method = null;
+        PsiMethod[] methods = psiClass.findMethodsByName(methodName, true);
+        if (argType instanceof PsiMethodReferenceType || argType instanceof PsiLambdaExpressionType) {
+            if (TypeConversionUtil.isAssignable(type, argType)) {
+                argType = type;
+            }
+        }
+        for (PsiMethod m : methods) {
+            if (m.getParameterList().getParametersCount() == 1) {
+                if (TypeConversionUtil.isAssignable(argType, subst.substitute(m.getParameterList().getParameters()[0].getType()))) {
+                    method = m;
+                    break;
+                }
+            }
+        }
 
         if (method == null || expression.getContext() == null) return null;
         if (!PsiResolveHelper.getInstance(expression.getProject()).isAccessible(method, expression.getContext(), psiClass)) {
-             return null;
+            return null;
         }
         return subst.substitute(method.getReturnType());
     }
