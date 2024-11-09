@@ -35,19 +35,20 @@ public class Resolves extends Resolve {
     @Override
     Symbol findMethod(Env<AttrContext> env, Type site, Name name, List<Type> argTypes, List<Type> typeArgTypes,
                       boolean allowBoxing, boolean useVarargs, boolean operator) {
-
         Symbol bestSoFar = super.findMethod(env, site, name, argTypes, typeArgTypes, allowBoxing, useVarargs, operator);
+        if (!operator) return bestSoFar;
 
-        boolean rhsError = (argTypes.tail != null
+        boolean rhsError = argTypes.tail != null
                 && argTypes.tail.head != null
-                && argTypes.tail.head.getTag() == TypeTag.ERROR);
+                && argTypes.tail.head.getTag() == TypeTag.ERROR;
 
-        if ((rhsError || (bestSoFar.kind >= Kinds.ERR)) && operator) {
+        if (rhsError || bestSoFar.kind >= Kinds.ERR) {
             Symbol method = findOperatorMethod(env, name, argTypes, typeArgTypes);
             if (method.kind == Kinds.MTH) {
                 bestSoFar = new Symbol.OperatorSymbol(method.name, method.type, ByteCodes.error + 1, method);
             }
         }
+
         return bestSoFar;
     }
 }
